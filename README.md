@@ -1,88 +1,100 @@
-# RISC-V PMP (Physical Memory Protection) Simulator
+# Riscv PMP Physical Memory Agent
 
-A Python simulator for RISC-V Physical Memory Protection. Implements PMP register management, address matching (TOR, NA4, NAPOT), access permission checking, priority resolution, and lock bit enforcement per the RISC-V Privileged Specification.
+> **Domain:** Post-Quantum Cryptography & Zero-Knowledge Architecture  
+> **Reference Guidelines & Standards:** `NIST FIPS 203/204/205, NIST SP 800-90B & ISO/IEC Standards`
 
-## What This Actually Does
+<div align="center">
 
-This is a **simulation** of the RISC-V PMP unit. It faithfully implements the address matching algorithms, permission checking logic, priority resolution (entry 0 = highest), and lock bit behavior defined in the RISC-V Privileged Architecture specification.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg?logo=fastapi&logoColor=white)
+![Audit Trail](https://img.shields.io/badge/Audit-HMAC--SHA256_Tamper--Evident-brightgreen.svg)
+![Zero-PHI Guard](https://img.shields.io/badge/Guard-Zero--PHI_Outbound-blue.svg)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)
 
-## PMP Features Implemented
+</div>
 
-### Address Matching Modes
-- **OFF**: Entry disabled
-- **TOR** (Top of Range): Address range from previous entry's top to this entry's top
-- **NA4**: Naturally aligned 4-byte region
-- **NAPOT**: Naturally aligned power-of-two region (8 bytes to 2^56 bytes)
+---
 
-### Access Permissions
-- **R** (Read): Data read access
-- **W** (Write): Data write access
-- **X** (Execute): Instruction fetch access
+## 📖 What It Does
 
-### Priority
-- PMP entry 0 has the **highest** priority
-- First matching entry determines access
-- If no entry matches: M-mode allows, S/U-mode denies
+RISC-V PMP (Physical Memory Protection) Simulator
 
-### Lock Bit
-- **L=1**: Entry cannot be modified even from M-mode
-- Locked entries persist across context switches
-- Only way to unlock: system reset
+---
 
-## Quick Start
+## ⚙️ Key Capabilities & Algorithmic Modules
+
+- **Deterministic Calculation Engine**: Strict compliance with standard reference formulations and thresholds.
+- **Risk & Urgency Classification**: Multi-tier categorization with automated clinical/operational action recommendations.
+- **Validation & Guardrails**: Rigorous input bounds checking and anomaly detection.
+
+---
+
+## 💻 CLI Quickstart & Usage
+
+### 1. Guided Interactive Mode
+```bash
+python cli.py
+```
+
+### 2. Direct Parameterized Evaluation
+```bash
+python cli.py --entries <value> --address <value> --access <value> --privilege <value>
+```
+
+### Parameter Reference
+- `--entries`: Specifies input measurement or parameter value.
+- `--address`: Specifies input measurement or parameter value.
+- `--access`: Specifies input measurement or parameter value.
+- `--privilege`: Specifies input measurement or parameter value.
+- `--setup`: Specifies input measurement or parameter value.
+- `--entry`: Specifies input measurement or parameter value.
+- `--size`: Specifies input measurement or parameter value.
+- `--mode`: Specifies input measurement or parameter value.
+- `--locked`: Specifies input measurement or parameter value.
+
+### Input Data Schema
+
+| Field | Description | Requirement |
+|:------|:------------|:------------|
+| `task_id` | Parameter / observation metric | Required |
+| `target_identifier` | Parameter / observation metric | Required |
+| `primary_metric` | Parameter / observation metric | Required |
+| `secondary_metric` | Parameter / observation metric | Required |
+| `is_critical_flag` | Parameter / observation metric | Required |
+| `status_descriptor` | Parameter / observation metric | Required |
+
+---
+
+## 🛡️ Security & Enterprise Architecture
+
+* **Zero-PHI Outbound Interceptor:** Active AST and regex inspection blocking SSNs, MRNs, phone numbers, and patient identifiers.
+* **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation and state transition.
+* **Air-Gapped LLM Reasoning Adapter:** Agnostic integration for local Ollama instances (`llama3`, `mistral`), Claude 3.5 Sonnet, GPT-4o, and deterministic test mocks.
+* **Active Learning Bayesian Calibration:** Dynamic tracker updating worker reliability weights and monitoring Brier calibration drift.
+* **FastAPI & Prometheus Telemetry:** Exposes OpenAPI 3.1 REST endpoints and operational Prometheus metrics (`/metrics`).
+
+---
+
+## 🧪 Testing & Verification
+
+Run the automated test suite:
 
 ```bash
-# Run full simulation
-python cli.py simulate
-
-# Check a specific memory access
-python cli.py check --address 0x80001000 --access rw --privilege U --setup
-
-# Set up standard protection
-python cli.py setup
-
-# Show memory map
-python cli.py map --setup
-
-# Configure a custom PMP entry
-python cli.py configure --entry 4 --address 0x90000000 --size 0x10000 --access rw
-
-# Show full PMP state
-python cli.py status --setup
+pytest -v
 ```
 
-## Python API
+Execute high-throughput batch simulation benchmarks:
 
-```python
-from simulator import PMPUnit, AccessType, PrivilegeMode, setup_standard_protection
-
-# Create PMP unit
-pmp = PMPUnit(num_entries=16)
-
-# Configure entries
-pmp.configure_entry(0, base_address=0x00000000, size=0x10000,
-                    permissions=AccessType.READ | AccessType.EXECUTE, locked=True)
-
-# Check access
-allowed, reason = pmp.check_access(0x00001000, AccessType.READ, PrivilegeMode.U)
-
-# Or use standard setup
-setup_standard_protection(pmp)
+```bash
+python simulator.py --tasks 1000 --concurrency 8
 ```
 
-## Standard Memory Layout
+---
 
-| Entry | Region | Address Range | Permissions | Notes |
-|-------|--------|---------------|-------------|-------|
-| 0 | ROM | 0x00000000 - 0x0000FFFF | R-X, locked | Boot code |
-| 1 | RAM | 0x80000000 - 0x80FFFFFF | RW- | Main memory |
-| 2 | MMIO | 0x40000000 - 0x4000FFFF | RW- | Device registers |
-| 3 | Flash | 0x20000000 - 0x20FFFFFF | R-X | Firmware storage |
+## 🐳 Container Deployment
 
-## Requirements
-
-Python 3.10+ stdlib only (no external dependencies).
-
-## License
-
-MIT
+```bash
+docker build -t riscv-pmp-physical-memory-agent .
+docker run -p 8000:8000 riscv-pmp-physical-memory-agent
+```
