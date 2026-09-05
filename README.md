@@ -1,15 +1,13 @@
-# Riscv PMP Physical Memory Agent
+# RISC-V PMP Physical Memory Agent
 
-> **Domain:** Post-Quantum Cryptography & Zero-Knowledge Architecture  
-> **Reference Guidelines & Standards:** `NIST FIPS 203/204/205, NIST SP 800-90B & ISO/IEC Standards`
+> **Domain:** Hardware Security & Physical Memory Protection  
+> **Standard:** RISC-V Privileged Architecture v1.12
 
 <div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg?logo=fastapi&logoColor=white)
-![Audit Trail](https://img.shields.io/badge/Audit-HMAC--SHA256_Tamper--Evident-brightgreen.svg)
-![Zero-PHI Guard](https://img.shields.io/badge/Guard-Zero--PHI_Outbound-blue.svg)
+![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB.svg?logo=python&logoColor=white)
+![Tests](https://img.shields.io/badge/Tests-46%20Passed-brightgreen.svg)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)
 
 </div>
@@ -18,83 +16,158 @@
 
 ## 📖 What It Does
 
-RISC-V PMP (Physical Memory Protection) Simulator
+RISC-V PMP (Physical Memory Protection) Simulator and Security Analysis Agent. This project provides:
+
+1. **PMP Simulator** (`simulator.py`): A faithful implementation of RISC-V PMP address matching and access control logic, supporting TOR, NA4, and NAPOT modes.
+2. **Security Analysis Agent** (`agents/`): Multi-worker analysis system with PHI outbound protection and HMAC-SHA256 tamper-evident audit trails.
+3. **RISC-V PMP Agent** (`riscv_pmp_agent/`): Distributed component coordination with sub-agents for address decoding, range validation, and configuration verification.
+4. **Enrichment Suite** (`enrichment.py`): Domain-specific analysis engines for PMP compliance, attack detection, and secure boot verification.
 
 ---
 
-## ⚙️ Key Capabilities & Algorithmic Modules
+## ⚙️ Key Capabilities
 
-- **Deterministic Calculation Engine**: Strict compliance with standard reference formulations and thresholds.
-- **Risk & Urgency Classification**: Multi-tier categorization with automated clinical/operational action recommendations.
-- **Validation & Guardrails**: Rigorous input bounds checking and anomaly detection.
+- **PMP Address Matching**: TOR (Top of Range), NA4 (Naturally Aligned 4-byte), NAPOT (Naturally Aligned Power-of-Two)
+- **Access Control**: R/W/X permissions with privilege mode checking (U/S/M)
+- **Lock Bit Support**: Prevents modification even from M-mode
+- **PHI Outbound Guard**: Regex-based detection and blocking of protected health information
+- **HMAC-SHA256 Audit Trail**: Cryptographically chained, tamper-evident logging
+- **Multi-Worker Analysis**: Invariant QC, Safety Escalation, Protocol Conformance workers
+- **FastAPI REST API**: Health, metrics, audit, and chat endpoints
+- **Prometheus Telemetry**: Operational metrics export
 
 ---
 
-## 💻 CLI Quickstart & Usage
+## 💻 Installation
 
-### 1. Guided Interactive Mode
 ```bash
-python cli.py
+# Clone the repository
+git clone https://github.com/abusuraihsakhri/riscv-pmp-physical-memory-agent.git
+cd riscv-pmp-physical-memory-agent
+
+# Install dependencies
+pip install fastapi uvicorn pydantic pytest
 ```
 
-### 2. Direct Parameterized Evaluation
+---
+
+## 🚀 CLI Usage
+
+### PMP Simulator CLI (`cli.py`)
+
 ```bash
-python cli.py --entries <value> --address <value> --access <value> --privilege <value>
+# Check a memory access against PMP rules
+python cli.py check --address 0x1000 --access rw --privilege M --setup
+
+# Configure a PMP entry
+python cli.py configure --entry 0 --address 0x1000 --size 0x40 --access rwx --mode napot
+
+# Show the current PMP memory map
+python cli.py map --setup
+
+# Run a full simulation with standard protection
+python cli.py simulate
+
+# Show full PMP state
+python cli.py status --setup
+
+# Set up standard protection
+python cli.py setup
 ```
 
-### Parameter Reference
-- `--entries`: Specifies input measurement or parameter value.
-- `--address`: Specifies input measurement or parameter value.
-- `--access`: Specifies input measurement or parameter value.
-- `--privilege`: Specifies input measurement or parameter value.
-- `--setup`: Specifies input measurement or parameter value.
-- `--entry`: Specifies input measurement or parameter value.
-- `--size`: Specifies input measurement or parameter value.
-- `--mode`: Specifies input measurement or parameter value.
-- `--locked`: Specifies input measurement or parameter value.
-
-### Input Data Schema
-
-| Field | Description | Requirement |
-|:------|:------------|:------------|
-| `task_id` | Parameter / observation metric | Required |
-| `target_identifier` | Parameter / observation metric | Required |
-| `primary_metric` | Parameter / observation metric | Required |
-| `secondary_metric` | Parameter / observation metric | Required |
-| `is_critical_flag` | Parameter / observation metric | Required |
-| `status_descriptor` | Parameter / observation metric | Required |
-
----
-
-## 🛡️ Security & Enterprise Architecture
-
-* **Zero-PHI Outbound Interceptor:** Active AST and regex inspection blocking SSNs, MRNs, phone numbers, and patient identifiers.
-* **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation and state transition.
-* **Air-Gapped LLM Reasoning Adapter:** Agnostic integration for local Ollama instances (`llama3`, `mistral`), Claude 3.5 Sonnet, GPT-4o, and deterministic test mocks.
-* **Active Learning Bayesian Calibration:** Dynamic tracker updating worker reliability weights and monitoring Brier calibration drift.
-* **FastAPI & Prometheus Telemetry:** Exposes OpenAPI 3.1 REST endpoints and operational Prometheus metrics (`/metrics`).
-
----
-
-## 🧪 Testing & Verification
-
-Run the automated test suite:
+### RISC-V PMP Agent CLI (`riscv_pmp_agent/cli.py`)
 
 ```bash
+# Run a single task evaluation
+python riscv_pmp_agent_app.py audit --task-id TASK-001 --primary 29.4 --secondary 15.1
+
+# System configuration query
+python riscv_pmp_agent_app.py chat "What is the system status?"
+
+# Batch process CSV records
+python riscv_pmp_agent_app.py batch -i sample.csv -o results.csv
+
+# Launch FastAPI REST server
+python riscv_pmp_agent_app.py serve --host 127.0.0.1 --port 8000
+
+# Verify HMAC-SHA256 audit trail integrity
+python riscv_pmp_agent_app.py verify-audit
+```
+
+---
+
+## 🧪 Testing
+
+```bash
+# Run all tests
 pytest -v
-```
 
-Execute high-throughput batch simulation benchmarks:
-
-```bash
-python simulator.py --tasks 1000 --concurrency 8
+# Run specific test suites
+pytest tests/test_simulator.py -v      # PMP simulator core tests (38 tests)
+pytest tests/test_riscv_pmp_agent.py -v # RISC-V PMP agent tests (3 tests)
+pytest tests/test_enrichment.py -v      # Enrichment suite tests (2 tests)
 ```
 
 ---
 
-## 🐳 Container Deployment
+## 🐳 Docker Deployment
 
 ```bash
+# Build and run with Docker
 docker build -t riscv-pmp-physical-memory-agent .
-docker run -p 8000:8000 riscv-pmp-physical-memory-agent
+docker run -p 8000:8000 -e AUDIT_SECRET_KEY=your-secret-key riscv-pmp-physical-memory-agent
+
+# Or use docker-compose
+docker-compose up
 ```
+
+---
+
+## 🔒 Security
+
+- **Audit Secret Key**: Set `AUDIT_SECRET_KEY` environment variable in production. A warning is issued if not set.
+- **PHI Protection**: Active regex inspection blocks SSNs, MRNs, phone numbers, and patient identifiers.
+- **Input Validation**: All PMP configuration and access check inputs are validated.
+
+---
+
+## 📁 Project Structure
+
+```
+riscv-pmp-physical-memory-agent/
+├── cli.py                      # PMP Simulator CLI
+├── simulator.py                # Core PMP simulation engine
+├── riscv_pmp_agent_app.py      # RISC-V PMP Agent entry point
+├── enrichment.py               # Domain-specific enrichment engines
+├── agents/                     # Security analysis agents
+│   ├── base.py                 # PHI guard, audit trail, security
+│   ├── models.py               # Pydantic data models
+│   ├── workers.py              # Specialized analysis workers
+│   ├── supervisor.py           # Multi-agent orchestrator
+│   ├── api.py                  # FastAPI REST endpoints
+│   ├── llm_factory.py          # LLM provider abstraction
+│   ├── learning.py             # Bayesian calibration engine
+│   ├── metrics.py              # Prometheus metrics collector
+│   └── streamer.py             # WebSocket telemetry broadcaster
+├── riscv_pmp_agent/            # RISC-V PMP coordination agent
+│   ├── models.py               # Data models
+│   ├── engine.py               # Core algorithmic engine
+│   ├── agents.py               # Sub-agents and coordinator
+│   ├── cli.py                  # Agent CLI
+│   └── server.py               # FastAPI server factory
+├── tests/                      # Test suite
+│   ├── test_simulator.py       # PMP simulator tests
+│   ├── test_riscv_pmp_agent.py # Agent tests
+│   ├── test_enrichment.py      # Enrichment tests
+│   └── test_riscv_pmp_physical_memory_agent.py # Integration tests
+├── web/                        # Web operations console
+├── Dockerfile                  # Docker build config
+├── docker-compose.yml          # Docker Compose config
+└── pyproject.toml              # Project metadata
+```
+
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.

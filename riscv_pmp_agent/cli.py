@@ -38,6 +38,9 @@ def main(argv=None):
     p_serve.add_argument("--host", default="127.0.0.1")
     p_serve.add_argument("--port", type=int, default=8000)
 
+    # Verify Audit
+    p_verify = subparsers.add_parser("verify-audit", help="Verify HMAC-SHA256 audit trail integrity")
+
     args = parser.parse_args(argv)
 
     if args.command == "audit":
@@ -111,6 +114,14 @@ def main(argv=None):
         except ImportError:
             print("FastAPI / uvicorn not installed. Run 'pip install fastapi uvicorn'")
             return 1
+
+    if args.command == "verify-audit":
+        from agents.base import AuditLogger
+        verified = AuditLogger.verify_integrity()
+        trail = AuditLogger.get_trail()
+        print(f"Audit Trail Verification: {'PASSED' if verified else 'FAILED'}")
+        print(f"Total audit blocks: {len(trail)}")
+        return 0 if verified else 1
 
     return 0
 

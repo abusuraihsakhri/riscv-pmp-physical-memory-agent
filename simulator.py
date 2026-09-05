@@ -9,11 +9,11 @@ Implements realistic simulations of RISC-V PMP:
 - Lock bit: L (prevents modification even in M-mode)
 - Address matching logic per RISC-V Privileged Specification
 
-Uses only Python stdlib (struct, enum, dataclasses).
+Uses only Python stdlib (enum, dataclasses).
 """
-from typing import List, Dict, Optional, Tuple, Any
+from typing import List, Dict, Tuple, Any
 from enum import IntEnum, IntFlag
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 # ---------------------------------------------------------------------------
@@ -268,28 +268,33 @@ class PMPUnit:
 
         Args:
             index: PMP entry index
-            base_address: Base address (must be naturally aligned)
+            base_address: Base address (must be naturally aligned, non-negative)
             size: Region size (must be power of 2, >= 8)
             permissions: Access permissions
             locked: Lock bit
 
         Returns:
             True if configuration succeeded.
+
+        Raises:
+            IndexError: If entry index is out of range.
+            ValueError: If size or base_address is invalid.
         """
         if not 0 <= index < self.num_entries:
-            raise IndexError(f"PMP entry {index} out of range")
+            raise IndexError(f"PMP entry {index} out of range [0, {self.num_entries})")
+
+        if base_address < 0:
+            raise ValueError(f"Base address must be non-negative, got {base_address}")
+
+        if size < 8 or (size & (size - 1)) != 0:
+            raise ValueError(f"Size must be power of 2 and >= 8, got {size}")
+
+        if base_address % size != 0:
+            raise ValueError(f"Base address 0x{base_address:X} not aligned to size {size}")
 
         entry = self._entries[index]
         if entry.locked:
             return False
-
-        # Validate size is power of 2 and >= 8
-        if size < 8 or (size & (size - 1)) != 0:
-            raise ValueError(f"Size must be power of 2 and >= 8, got {size}")
-
-        # Validate alignment
-        if base_address % size != 0:
-            raise ValueError(f"Base address 0x{base_address:X} not aligned to size {size}")
 
         # Compute NAPOT encoding
         # pmpaddr = (base >> 2) | ((size >> 3) - 1) ... but with trailing ones
@@ -316,9 +321,25 @@ class PMPUnit:
         Configure a PMP entry with TOR (Top of Range) mode.
 
         The base address is the top of the previous entry (or 0 for entry 0).
+
+        Args:
+            index: PMP entry index
+            top_address: Top address of the region (must be non-negative)
+            permissions: Access permissions
+            locked: Lock bit
+
+        Returns:
+            True if configuration succeeded.
+
+        Raises:
+            IndexError: If entry index is out of range.
+            ValueError: If top_address is negative.
         """
         if not 0 <= index < self.num_entries:
-            raise IndexError(f"PMP entry {index} out of range")
+            raise IndexError(f"PMP entry {index} out of range [0, {self.num_entries})")
+
+        if top_address < 0:
+            raise ValueError(f"Top address must be non-negative, got {top_address}")
 
         entry = self._entries[index]
         if entry.locked:
@@ -351,8 +372,19 @@ class PMPUnit:
            - M-mode: allowed (default)
            - S/U-mode: denied (default)
 
+        Args:
+            address: Physical address to check (must be non-negative)
+            access_type: Type of access (READ, WRITE, EXECUTE)
+            privilege: Privilege mode (U, S, M)
+
         Returns (allowed: bool, reason: str).
+
+        Raises:
+            ValueError: If address is negative.
         """
+        if address < 0:
+            raise ValueError(f"Address must be non-negative, got {address}")
+
         prev_top = 0
 
         for entry in self._entries:
