@@ -4,7 +4,9 @@ WORKDIR /app
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 
 COPY . .
-RUN python -m pip install --no-cache-dir ".[api]"
+RUN python -m pip install --no-cache-dir ".[api]" \
+    && useradd --system --uid 10001 --create-home appuser
+USER appuser
 
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
