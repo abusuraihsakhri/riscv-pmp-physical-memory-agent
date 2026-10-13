@@ -147,6 +147,8 @@ class PMPEntry:
             # Naturally Aligned Power-of-Two
             # Find the number of trailing 1 bits in pmpaddr
             addr = self.pmpaddr
+            if not 0 <= addr <= 0x00FFFFFFFFFFFFFF:
+                raise ValueError("NAPOT register value must fit in 56 bits")
             # Count trailing ones
             trailing_ones = 0
             temp = addr
@@ -287,6 +289,8 @@ class PMPUnit:
         if not 0 <= index < self.num_entries:
             raise IndexError(f"PMP entry {index} out of range [0, {self.num_entries})")
 
+        if (permissions & AccessType.WRITE) and not (permissions & AccessType.READ):
+            raise ValueError("Write permission requires read permission in baseline PMP")
         if base_address < 0:
             raise ValueError(f"Base address must be non-negative, got {base_address}")
 
@@ -344,6 +348,8 @@ class PMPUnit:
         if not 0 <= index < self.num_entries:
             raise IndexError(f"PMP entry {index} out of range [0, {self.num_entries})")
 
+        if (permissions & AccessType.WRITE) and not (permissions & AccessType.READ):
+            raise ValueError("Write permission requires read permission in baseline PMP")
         if top_address < 0:
             raise ValueError(f"Top address must be non-negative, got {top_address}")
 
@@ -380,7 +386,7 @@ class PMPUnit:
             raise ValueError("Address must be a non-negative integer")
         if not isinstance(size, int) or size <= 0:
             raise ValueError("Access size must be a positive integer")
-        if not isinstance(access_type, AccessType) or not access_type or access_type & ~AccessType.RWX:
+        if not isinstance(access_type, AccessType) or not access_type or (int(access_type) & ~int(AccessType.RWX)):
             raise ValueError("Access type must include valid R, W or X permissions")
         if privilege not in (PrivilegeMode.U, PrivilegeMode.S, PrivilegeMode.M):
             raise ValueError("Privilege must be U, S or M")
