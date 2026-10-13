@@ -1,236 +1,93 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Riscv Pmp Physical Memory Engine — Operations Console</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #090d16;
-            --card: #111827;
-            --border: #1f293d;
-            --accent: #3b82f6;
-            --accent-glow: rgba(59, 130, 246, 0.25);
-            --text: #f3f4f6;
-            --text-muted: #9ca3af;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --success: #10b981;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            padding: 2rem;
-            min-height: 100vh;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        .header-title h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
-        .header-title p { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem; }
-        .badge {
-            display: inline-block;
-            padding: 0.3rem 0.8rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            background: var(--accent-glow);
-            color: var(--accent);
-            border: 1px solid var(--accent);
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1.2fr;
-            gap: 1.5rem;
-        }
-        .card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        }
-        .card h2 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .form-group { margin-bottom: 1rem; }
-        label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.4rem; }
-        input, select, textarea {
-            width: 100%;
-            padding: 0.65rem 0.9rem;
-            background: #0d1322;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            color: #fff;
-            font-family: inherit;
-            font-size: 0.9rem;
-        }
-        input:focus, textarea:focus { outline: none; border-color: var(--accent); }
-        .btn {
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            padding: 0.7rem 1.4rem;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.2s;
-            width: 100%;
-        }
-        .btn:hover { background: #2563eb; }
-        .terminal {
-            background: #060911;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            color: #10b981;
-            height: 380px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-        }
-        .metrics-bar {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        .metric-box {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem;
-            text-align: center;
-        }
-        .metric-val { font-size: 1.4rem; font-weight: 700; color: #fff; margin-top: 0.25rem; }
-        .metric-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>RISC-V PMP Inspector</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color-scheme:dark;--bg:#0b1020;--panel:#151e30;--border:#334155;--muted:#b0c0d1;--accent:#83b9ff;--bad:#ffb2ae}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#f1f5fa;font-size:15px;line-height:1.5}
+main{width:min(1120px,100% - 32px);margin:0 auto;padding:32px 0 52px}
+h1{font-size:clamp(1.5rem,3.5vw,2.2rem);margin:0}h2{font-size:1.13rem;margin:0 0 16px}
+p{margin:6px 0 14px}header{margin-bottom:24px}small,.muted{color:var(--muted)}
+.kicker{font-size:.82rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:700}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;min-width:0}
+.wide{grid-column:1/-1}
+.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field.full{grid-column:1/-1}
+label{font-weight:600;font-size:.87rem}
+input,select{color:inherit;background:#0b1526;border:1px solid #62748a;border-radius:7px;padding:10px 11px;width:100%;min-width:0;font:inherit}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button{padding:10px 16px;background:#2877d1;color:white;border:1px solid #4498fc;border-radius:7px;font-weight:650;cursor:pointer;font:inherit}
+button:hover{background:#195ba6}
+button.secondary{background:transparent;border-color:#71859e}
+button.secondary:hover{background:#2b394e}
+.buttons{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.checkbox{display:flex;align-items:center;gap:10px}.checkbox input{width:auto}
+.output{border:1px solid var(--border);border-radius:8px;background:#0a1424;white-space:pre-wrap;overflow-wrap:anywhere;padding:16px;min-height:90px;margin-top:14px}
+.result-ok{border-left:4px solid #4dd6a5}.result-deny{border-left:4px solid var(--bad)}
+.error{color:var(--bad);min-height:1.4em;margin:8px 0 0}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;text-align:left;min-width:590px}
+th,td{border-bottom:1px solid var(--border);padding:9px 10px;font-size:.91rem}
+th{font-size:.82rem;color:var(--muted)}
+td code{color:#cce2ff;white-space:nowrap}
+footer{margin-top:24px;color:var(--muted);font-size:.85rem}
+@media(max-width:740px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}main{padding-top:20px}}
+@media(max-width:440px){.formgrid{grid-template-columns:1fr}.field.full{grid-column:auto}.panel{padding:16px}}
+</style>
+<script defer src="./pmp.js"></script>
+<script defer src="./ui.js"></script>
 </head>
 <body>
-
-    <div class="header">
-        <div class="header-title">
-            <h1>Riscv Pmp Physical Memory Engine</h1>
-            <p>Domain: Clinical & Cryptographic AI | Standard: CAP / CLSI / NIST Standards | LabMind-Atlas Architecture</p>
-        </div>
-        <div>
-            <span class="badge">Air-Gapped Active</span>
-            <span class="badge" style="background: rgba(16,185,129,0.2); color: #10b981; border-color: #10b981;">Zero-PHI Guard Active</span>
-        </div>
-    </div>
-
-    <div class="metrics-bar">
-        <div class="metric-box">
-            <div class="metric-label">System Status</div>
-            <div class="metric-val" style="color: var(--success);" id="m-status">OPTIMAL</div>
-        </div>
-        <div class="metric-box">
-            <div class="metric-label">Tasks Processed</div>
-            <div class="metric-val" id="m-tasks">142</div>
-        </div>
-        <div class="metric-box">
-            <div class="metric-label">Audit Blocks Signed</div>
-            <div class="metric-val" id="m-audit">142</div>
-        </div>
-        <div class="metric-box">
-            <div class="metric-label">PHI Interceptions</div>
-            <div class="metric-val" style="color: var(--accent);" id="m-phi">0</div>
-        </div>
-    </div>
-
-    <div class="grid">
-        <div class="card">
-            <h2>⚙️ Dispatch Distributed Component Audit</h2>
-            <div class="form-group">
-                <label>Task / Sample ID</label>
-                <input type="text" id="task_id" value="TASK-2026-LIVE-01">
-            </div>
-            <div class="form-group">
-                <label>Target Identifier</label>
-                <input type="text" id="target_id" value="SPECIMEN-ALPHA-77">
-            </div>
-            <div class="form-group">
-                <label>Primary Measurement / Value</label>
-                <input type="number" id="primary_metric" value="29.4" step="0.1">
-            </div>
-            <div class="form-group">
-                <label>Secondary Metric / Kinetic Index</label>
-                <input type="number" id="secondary_metric" value="14.8" step="0.1">
-            </div>
-            <div class="form-group">
-                <label>Status / Phenotype Descriptor</label>
-                <input type="text" id="status_descriptor" value="DISCORDANT_ANOMALY">
-            </div>
-            <div class="form-group">
-                <label><input type="checkbox" id="is_critical" checked> Trigger Emergency / Critical Flag</label>
-            </div>
-            <button class="btn" onclick="runAudit()">Execute Distributed Component Audit</button>
-        </div>
-
-        <div class="card">
-            <h2>📊 Real-Time Consensus Dossier & Audit Log</h2>
-            <div class="terminal" id="outputConsole">// Riscv Pmp Physical Memory Engine Operations Console Ready
-// Connection established with Air-Gapped Supervisor
-// Cryptographic HMAC-SHA256 audit ledger loaded.
-// Ready for live task payload dispatch...</div>
-        </div>
-    </div>
-
-    <script>
-        async function runAudit() {
-            const consoleEl = document.getElementById('outputConsole');
-            consoleEl.innerText = "// Dispatching task across specialized workers...
-// Invoking InvariantQCWorker, SafetyEscalationWorker, ProtocolWorker...";
-
-            const payload = {
-                task_id: document.getElementById('task_id').value,
-                target_identifier: document.getElementById('target_id').value,
-                primary_metric: parseFloat(document.getElementById('primary_metric').value),
-                secondary_metric: parseFloat(document.getElementById('secondary_metric').value),
-                status_descriptor: document.getElementById('status_descriptor').value,
-                is_critical_flag: document.getElementById('is_critical').checked
-            };
-
-            try {
-                const res = await fetch('/api/audit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                consoleEl.innerText = JSON.stringify(data, null, 2);
-                document.getElementById('m-tasks').innerText = parseInt(document.getElementById('m-tasks').innerText) + 1;
-                document.getElementById('m-audit').innerText = parseInt(document.getElementById('m-audit').innerText) + 1;
-            } catch (err) {
-                consoleEl.innerText = "// Offline / Simulation Output:\n" + JSON.stringify({
-                    dossier_id: "DOSSIER-SIM-" + Math.floor(Math.random()*10000),
-                    system: "riscv-pmp-physical-memory-engine",
-                    domain: "Clinical & Cryptographic AI",
-                    task_id: payload.task_id,
-                    overall_urgency: payload.is_critical_flag ? "CRITICAL_STAT_PANIC" : "ELEVATED_RISK",
-                    integrity_status: "DISCORDANT_ANOMALY",
-                    alerts: [
-                        { worker: "InvariantQCWorker", alert: "Primary metric exceeds upper reference bound" },
-                        { worker: "SafetyEscalationWorker", alert: "Critical emergency interlock flag active" }
-                    ],
-                    audit_hash: "HMAC_SHA256_e83f9a72b941d6c381f9"
-                }, null, 2);
-            }
-        }
-    </script>
+<main>
+<header>
+<div class="kicker">Hardware security · Local-only simulator</div>
+<h1>RISC-V Physical Memory Protection Inspector</h1>
+<p class="muted">Configure baseline PMP entries and evaluate a physical memory operation against first-match priority, R/W/X permissions, TOR/NA4/NAPOT decoding and locks.</p>
+<small>Educational model of baseline PMP. No ePMP/Smepmp, virtual memory, implementation-specific grain, or actual hardware access.</small>
+</header>
+<div class="grid">
+<section class="panel">
+<h2>Configure entry</h2>
+<form id="config-form" class="formgrid">
+<div class="field"><label for="index">PMP index (0–15)</label><input id="index" type="number" min="0" max="15" step="1" value="4" required></div>
+<div class="field"><label for="mode">Address matching</label><select id="mode"><option value="NAPOT">NAPOT</option><option value="NA4">NA4 (4 bytes)</option><option value="TOR">TOR (top boundary)</option><option value="OFF">OFF</option></select></div>
+<div class="field full"><label for="address">Physical address (hex or decimal)</label><input id="address" value="0x90000000" spellcheck="false" required><small>NAPOT/NA4: base address · TOR/OFF: address register top</small></div>
+<div class="field"><label for="size">NAPOT size (bytes)</label><input id="size" value="4096" spellcheck="false" required></div>
+<div class="field"><label for="permissions">Permissions</label><select id="permissions"><option value="RW">Read / write</option><option value="R">Read only</option><option value="RX">Read / execute</option><option value="RWX">Read / write / execute</option><option value="X">Execute only</option><option value="">None</option></select></div>
+<div class="field full"><label class="checkbox" for="locked"><input id="locked" type="checkbox">Lock configuration and enforce in M-mode</label></div>
+<div class="field full"><button type="submit">Apply PMP entry</button></div>
+</form>
+<p class="error" id="config-error" role="alert"></p>
+<div class="buttons"><button class="secondary" id="example" type="button">Reload example</button><button class="secondary" id="reset" type="button">Clear configuration</button></div>
+</section>
+<section class="panel">
+<h2>Check a memory operation</h2>
+<form id="check-form" class="formgrid">
+<div class="field full"><label for="access-address">Physical start address</label><input id="access-address" value="0x1000" spellcheck="false" required></div>
+<div class="field"><label for="access-type">Access type</label><select id="access-type"><option value="R">Read</option><option value="W">Write</option><option value="X">Execute</option></select></div>
+<div class="field"><label for="privilege">Privilege mode</label><select id="privilege"><option value="U">User (U)</option><option value="S">Supervisor (S)</option><option value="M">Machine (M)</option></select></div>
+<div class="field full"><label for="bytes">Memory operation size (bytes)</label><input id="bytes" value="4" required></div>
+<div class="field full"><button type="submit">Evaluate access</button></div>
+</form>
+<p class="error" id="check-error" role="alert"></p>
+<div id="result" class="output" role="status" aria-live="polite">Choose an operation and evaluate it against the current PMP configuration.</div>
+<div class="buttons"><button class="secondary" id="export" type="button">Export configuration and result (JSON)</button></div>
+</section>
+<section class="panel wide">
+<h2>Current PMP register map <small id="count" aria-live="polite"></small></h2>
+<p class="muted">Earlier entries have higher priority. TOR lower bounds use the preceding address register, even when that entry is OFF. Ranges are inclusive in this display.</p>
+<div class="table-scroll">
+<table><thead><tr><th>Entry</th><th>Mode</th><th>pmpaddr</th><th>Range</th><th>R/W/X</th><th>Locked</th></tr></thead><tbody id="map"></tbody></table>
+</div>
+</section>
+</div>
+<footer>All evaluations run within this browser tab; no input is uploaded or retained by the site. Reloading resets the simulator. Source and Python CLI: <a href="https://github.com/abusuraihsakhri/riscv-pmp-physical-memory-agent" style="color:var(--accent)">GitHub repository</a>.</footer>
+</main>
 </body>
 </html>
