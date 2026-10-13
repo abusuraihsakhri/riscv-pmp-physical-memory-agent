@@ -11,6 +11,16 @@ from .agents import RISCVPMPCoordinator
 coordinator = RISCVPMPCoordinator()
 
 
+def parse_csv_bool(value):
+    """Parse a CSV boolean without treating the nonempty string 'false' as true."""
+    text = str(value if value is not None else "").strip().lower()
+    if text in ("true", "1", "yes", "y", "on"):
+        return True
+    if text in ("", "false", "0", "no", "n", "off"):
+        return False
+    raise ValueError(f"Invalid is_critical_flag value: {value!r}")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="riscv-pmp-physical-memory-agent", description="RISC-V Physical Memory Protection (PMP) & ePMP Matrix Agent")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -77,7 +87,9 @@ def main(argv=None):
             fieldnames = list(reader.fieldnames or [])
             rows = list(reader)
 
-        out_fields = fieldnames + ["overall_status", "total_alerts", "critical_count", "consensus_summary"]
+        out_fields = list(dict.fromkeys(fieldnames + [
+            "overall_status", "total_alerts", "critical_count", "consensus_summary"
+        ]))
         out_rows = []
         for r in rows:
             payload = FrontierPayload(
@@ -86,7 +98,7 @@ def main(argv=None):
                 primary_metric=float(r.get("primary_metric", 15.0)),
                 secondary_metric=float(r.get("secondary_metric", 5.0)),
                 status_descriptor=r.get("status_descriptor", "NOMINAL"),
-                is_critical_flag=bool(r.get("is_critical_flag", False)),
+                is_critical_flag=parse_csv_bool(r.get("is_critical_flag", False)),
             )
             dossier = coordinator.process(payload)
             row_dict = dict(r)
@@ -111,6 +123,9 @@ def main(argv=None):
             if app:
                 print(f"Starting RISC-V Physical Memory Protection (PMP) & ePMP Matrix Agent on http://{args.host}:{args.port}")
                 uvicorn.run(app, host=args.host, port=args.port)
+            else:
+                print("FastAPI / pydantic not installed.")
+                return 1
         except ImportError:
             print("FastAPI / uvicorn not installed. Run 'pip install fastapi uvicorn'")
             return 1
