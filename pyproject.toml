@@ -1,27 +1,36 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "riscv-pmp-physical-memory-engine"
-version = "2.0.0"
-description = "RISC-V Physical Memory Protection (PMP) & ePMP Matrix Engine"
+name = "riscv-pmp-physical-memory-agent"
+version = "2.0.1"
+description = "RISC-V baseline PMP region and access-check simulator with optional audit APIs"
 readme = "README.md"
-authors = [{ name = "Dr. Abu Suraih Sakhri", email = "abusuraih@example.com" }]
-license = { text = "MIT" }
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [{name = "Dr. Abu Suraih Sakhri"}]
+dependencies = ["pydantic>=2,<3"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Topic :: Security/Cryptography",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Security",
 ]
-requires-python = ">=3.9"
-dependencies = []
+
+[project.optional-dependencies]
+api = ["fastapi>=0.100,<1", "uvicorn>=0.23,<1"]
+test = ["pytest>=7,<10"]
 
 [project.scripts]
-riscv-pmp-physical-memory-engine = "riscv_pmp_agent.cli:main"
+riscv-pmp-physical-memory-agent = "riscv_pmp_agent.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/abusuraihsakhri/riscv-pmp-physical-memory-engine"
-Repository = "https://github.com/abusuraihsakhri/riscv-pmp-physical-memory-engine.git"
+Homepage = "https://github.com/abusuraihsakhri/riscv-pmp-physical-memory-agent"
+Repository = "https://github.com/abusuraihsakhri/riscv-pmp-physical-memory-agent"
+
+[tool.setuptools]
+py-modules = ["simulator", "cli", "enrichment", "riscv_pmp_agent_app"]
+
+[tool.setuptools.packages.find]
+include = ["agents*", "riscv_pmp_agent*"]
