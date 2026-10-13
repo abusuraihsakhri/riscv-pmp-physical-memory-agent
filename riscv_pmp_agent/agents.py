@@ -105,6 +105,6 @@ class RISCVPMPCoordinator:
         if "status" in q or "ledger" in q:
             return f"RISC-V Physical Memory Protection (PMP) & ePMP Matrix Agent currently managing {len(self.execution_ledger)} execution tasks in air-gapped memory."
         elif "standard" in q or "spec" in q:
-            return "Active runtime operating strictly according to RISC-V Privileged Architecture v1.12 specifications."
+            return "The separate PMP simulator models baseline RISC-V Privileged Architecture v1.12 rules; this numeric-threshold coordinator is not an architectural conformance checker."
         else:
             return f"RISC-V Physical Memory Protection (PMP) & ePMP Matrix Agent executive coordinator online. Zero-telemetry on-premises surveillance active."
