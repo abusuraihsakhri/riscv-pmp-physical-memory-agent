@@ -1,173 +1,71 @@
 # RISC-V PMP Physical Memory Agent
 
-> **Domain:** Hardware Security & Physical Memory Protection  
-> **Standard:** RISC-V Privileged Architecture v1.12
+### [Open the Browser Inspector →](https://abusuraihsakhri.github.io/riscv-pmp-physical-memory-agent/)
 
-<div align="center">
+Model baseline RISC-V physical memory protection (PMP) permissions and region matching, using a Python CLI or a static, entirely local browser interface. This repository also contains separate heuristic telemetry/audit components; their threshold alerts are **not** PMP architecture conformance tests.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB.svg?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/Tests-46%20Passed-brightgreen.svg)
-![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)
+## What it supports
 
-</div>
+- **Python simulator** (`simulator.py`): priority-ordered TOR, NA4 and NAPOT regions, R/W/X permissions, M/S/U privilege checks, locked configurations and full-memory-operation boundary checks.
+- **Browser inspector** (`web/`): edit PMP entries, test an access, inspect the encoded address registers and export a JSON report without a server or third-party dependencies.
+- **CLI** (`cli.py`): inspect a sample memory map, simulate accesses, configure example regions and check permissions.
+- **Optional agent API** (`riscv_pmp_agent/`): independent numeric-threshold demonstrations with `/health`, `/api/audit` and `/api/chat`. These endpoints do **not** run the PMP simulator.
+- **Audit subsystem** (`agents/`): in-memory HMAC-SHA256 chain and heuristic identifier filtering, with a separate API.
 
----
+## Browser use
 
-## 📖 What It Does
+Open the Pages link above, or open `web/index.html` locally. Start with the supplied ROM/RAM/MMIO/Flash example, then configure an entry by index and addressing mode. NAPOT takes a naturally aligned base and power-of-two size (8 bytes or greater); NA4 uses a 4-byte base; TOR uses the *top address* and the preceding entry's `pmpaddr` register as the lower bound, even if that entry is OFF. Test an R/W/X operation by privilege, address and size. Locked configurations cannot be changed through the form without resetting the simulator.
 
-RISC-V PMP (Physical Memory Protection) Simulator and Security Analysis Agent. This project provides:
+All calculations and JSON exports execute locally in your browser. Nothing is uploaded, saved on a server or persisted across page reloads.
 
-1. **PMP Simulator** (`simulator.py`): A faithful implementation of RISC-V PMP address matching and access control logic, supporting TOR, NA4, and NAPOT modes.
-2. **Security Analysis Agent** (`agents/`): Multi-worker analysis system with PHI outbound protection and HMAC-SHA256 tamper-evident audit trails.
-3. **RISC-V PMP Agent** (`riscv_pmp_agent/`): Distributed component coordination with sub-agents for address decoding, range validation, and configuration verification.
-4. **Enrichment Suite** (`enrichment.py`): Domain-specific analysis engines for PMP compliance, attack detection, and secure boot verification.
+## Python CLI and tests
 
----
-
-## ⚙️ Key Capabilities
-
-- **PMP Address Matching**: TOR (Top of Range), NA4 (Naturally Aligned 4-byte), NAPOT (Naturally Aligned Power-of-Two)
-- **Access Control**: R/W/X permissions with privilege mode checking (U/S/M)
-- **Lock Bit Support**: Prevents modification even from M-mode
-- **PHI Outbound Guard**: Regex-based detection and blocking of protected health information
-- **HMAC-SHA256 Audit Trail**: Cryptographically chained, tamper-evident logging
-- **Multi-Worker Analysis**: Invariant QC, Safety Escalation, Protocol Conformance workers
-- **FastAPI REST API**: Health, metrics, audit, and chat endpoints
-- **Prometheus Telemetry**: Operational metrics export
-
----
-
-## 💻 Installation
+Requires Python 3.9 or newer.
 
 ```bash
-# Clone the repository
 git clone https://github.com/abusuraihsakhri/riscv-pmp-physical-memory-agent.git
 cd riscv-pmp-physical-memory-agent
-
-# Install dependencies
-pip install fastapi uvicorn pydantic pytest
-```
-
----
-
-## 🚀 CLI Usage
-
-### PMP Simulator CLI (`cli.py`)
-
-```bash
-# Check a memory access against PMP rules
-python cli.py check --address 0x1000 --access rw --privilege M --setup
-
-# Configure a PMP entry
-python cli.py configure --entry 0 --address 0x1000 --size 0x40 --access rwx --mode napot
-
-# Show the current PMP memory map
-python cli.py map --setup
-
-# Run a full simulation with standard protection
+python -m pip install -e ".[api,test]"
 python cli.py simulate
-
-# Show full PMP state
-python cli.py status --setup
-
-# Set up standard protection
-python cli.py setup
+python cli.py check --address 0x1000 --access r --privilege U --setup
+python -m pytest -q
+node --test tests/pmp_web.test.cjs  # optional: browser engine tests (Node 22)
 ```
 
-### RISC-V PMP Agent CLI (`riscv_pmp_agent/cli.py`)
+The standalone simulator uses Python's standard library. The optional agent module can be run with:
 
 ```bash
-# Run a single task evaluation
-python riscv_pmp_agent_app.py audit --task-id TASK-001 --primary 29.4 --secondary 15.1
-
-# System configuration query
-python riscv_pmp_agent_app.py chat "What is the system status?"
-
-# Batch process CSV records
-python riscv_pmp_agent_app.py batch -i sample.csv -o results.csv
-
-# Launch FastAPI REST server
-python riscv_pmp_agent_app.py serve --host 127.0.0.1 --port 8000
-
-# Verify HMAC-SHA256 audit trail integrity
-python riscv_pmp_agent_app.py verify-audit
+riscv-pmp-physical-memory-agent audit --task-id DEMO --primary 12 --secondary 4 --status NOMINAL
+riscv-pmp-physical-memory-agent batch -i sample.csv -o results.csv
+riscv-pmp-physical-memory-agent serve --host 127.0.0.1 --port 8000
 ```
 
----
+`batch` accepts the boolean flags `true/false`, `yes/no`, or `1/0` in its CSV column.
 
-## 🧪 Testing
+## Container
 
 ```bash
-# Run all tests
-pytest -v
-
-# Run specific test suites
-pytest tests/test_simulator.py -v      # PMP simulator core tests (38 tests)
-pytest tests/test_riscv_pmp_agent.py -v # RISC-V PMP agent tests (3 tests)
-pytest tests/test_enrichment.py -v      # Enrichment suite tests (2 tests)
+export AUDIT_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+docker compose up --build
 ```
 
----
+The Compose service binds to `127.0.0.1:8000` by default. It serves the *optional numeric-threshold agent API*, not the standalone browser application or PMP simulator. Keep the signing key secret and out of version control.
 
-## 🐳 Docker Deployment
+## Scope and security limitations
 
-```bash
-# Build and run with Docker
-docker build -t riscv-pmp-physical-memory-agent .
-docker run -p 8000:8000 -e AUDIT_SECRET_KEY=your-secret-key riscv-pmp-physical-memory-agent
+This is a **baseline PMP educational software model**, not a hardware verification tool or a guarantee of platform isolation. It does not implement Smepmp/ePMP policy changes, virtual memory, configurable PMP grain or implementation-specific behavior. `check_access` treats the provided byte range as one memory operation; hardware may split misaligned memory operations. It models 16 entries by default.
 
-# Or use docker-compose
-docker-compose up
-```
+The heuristic agent subsystem performs ordinary rule-based threshold classification, not formal standards validation. Its regex-based identifier guard is **not sufficient to establish HIPAA compliance**. The audit chain is ephemeral and HMAC-checked, but does not provide tamper-proof external storage or authenticated network access. Do not expose the example APIs to untrusted networks without adding authentication, TLS and operational protections.
 
----
+## Development and compatibility
 
-## 🔒 Security
+- Pure Python simulation; FastAPI/Pydantic are optional for agent APIs.
+- Static HTML, CSS and modern JavaScript with native `BigInt`; current Chrome, Firefox, Safari and Edge.
+- CI covers Python 3.9–3.13, JavaScript regression tests, and package wheel generation.
+- No browser Python runtime is required; the browser inspector implements the same basic PMP concepts directly in JavaScript.
 
-- **Audit Secret Key**: Set `AUDIT_SECRET_KEY` environment variable in production. A warning is issued if not set.
-- **PHI Protection**: Active regex inspection blocks SSNs, MRNs, phone numbers, and patient identifiers.
-- **Input Validation**: All PMP configuration and access check inputs are validated.
+Reference: [RISC-V Privileged Architecture specification](https://docs.riscv.org/reference/isa/priv/machine.html).
 
----
+## License
 
-## 📁 Project Structure
-
-```
-riscv-pmp-physical-memory-agent/
-├── cli.py                      # PMP Simulator CLI
-├── simulator.py                # Core PMP simulation engine
-├── riscv_pmp_agent_app.py      # RISC-V PMP Agent entry point
-├── enrichment.py               # Domain-specific enrichment engines
-├── agents/                     # Security analysis agents
-│   ├── base.py                 # PHI guard, audit trail, security
-│   ├── models.py               # Pydantic data models
-│   ├── workers.py              # Specialized analysis workers
-│   ├── supervisor.py           # Multi-agent orchestrator
-│   ├── api.py                  # FastAPI REST endpoints
-│   ├── llm_factory.py          # LLM provider abstraction
-│   ├── learning.py             # Bayesian calibration engine
-│   ├── metrics.py              # Prometheus metrics collector
-│   └── streamer.py             # WebSocket telemetry broadcaster
-├── riscv_pmp_agent/            # RISC-V PMP coordination agent
-│   ├── models.py               # Data models
-│   ├── engine.py               # Core algorithmic engine
-│   ├── agents.py               # Sub-agents and coordinator
-│   ├── cli.py                  # Agent CLI
-│   └── server.py               # FastAPI server factory
-├── tests/                      # Test suite
-│   ├── test_simulator.py       # PMP simulator tests
-│   ├── test_riscv_pmp_agent.py # Agent tests
-│   ├── test_enrichment.py      # Enrichment tests
-│   └── test_riscv_pmp_physical_memory_agent.py # Integration tests
-├── web/                        # Web operations console
-├── Dockerfile                  # Docker build config
-├── docker-compose.yml          # Docker Compose config
-└── pyproject.toml              # Project metadata
-```
-
----
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) for details.
+[MIT](LICENSE).

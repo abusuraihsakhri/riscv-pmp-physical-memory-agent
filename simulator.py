@@ -122,7 +122,7 @@ class PMPEntry:
 
     # -- Address range computation --
 
-    def get_address_range(self) -> Tuple[int, int]:
+    def get_address_range(self, prev_top: int = 0) -> Tuple[int, int]:
         """
         Compute the address range [lo, hi) for this PMP entry.
 
@@ -136,8 +136,7 @@ class PMPEntry:
             # Top of Range: base = previous entry's top (or 0 for entry 0)
             # top = pmpaddr << 2
             top = self.pmpaddr << 2
-            # Base is determined by the previous entry (handled by PMPUnit)
-            return (0, top)  # Base set externally
+            return (prev_top, top) if prev_top < top else (0, 0)
 
         if mode == PMPMatchMode.NA4:
             # Naturally Aligned 4-byte region
@@ -148,9 +147,8 @@ class PMPEntry:
             # Naturally Aligned Power-of-Two
             # Find the number of trailing 1 bits in pmpaddr
             addr = self.pmpaddr
-            if addr == 0:
-                return (0, 0)
-
+            if not 0 <= addr <= 0x00FFFFFFFFFFFFFF:
+                raise ValueError("NAPOT register value must fit in 56 bits")
             # Count trailing ones
             trailing_ones = 0
             temp = addr
@@ -192,8 +190,8 @@ class PMPEntry:
 
         return False
 
-    def to_dict(self) -> Dict[str, Any]:
-        lo, hi = self.get_address_range()
+    def to_dict(self, prev_top: int = 0) -> Dict[str, Any]:
+        lo, hi = self.get_address_range(prev_top)
         return {
             'index': self.index,
             'pmpcfg': f"0x{self.pmpcfg:02X}",
@@ -247,6 +245,14 @@ class PMPUnit:
         entry.pmpcfg = value & 0xFF
         return True
 
+    def _locked_tor_successor(self, index: int) -> bool:
+        """A locked TOR rule also locks the preceding pmpaddr register."""
+        return (
+            index + 1 < self.num_entries
+            and self._entries[index + 1].locked
+            and self._entries[index + 1].match_mode == PMPMatchMode.TOR
+        )
+
     def write_pmpaddr(self, index: int, value: int) -> bool:
         """
         Write to a pmpaddr register.
@@ -254,7 +260,7 @@ class PMPUnit:
         Returns True if the write succeeded, False if blocked by lock bit.
         """
         entry = self._entries[index]
-        if entry.locked:
+        if entry.locked or self._locked_tor_successor(index):
             return False
         # pmpaddr is 56 bits (bits [55:0] of address >> 2)
         entry.pmpaddr = value & 0x00FFFFFFFFFFFFFF
@@ -283,6 +289,8 @@ class PMPUnit:
         if not 0 <= index < self.num_entries:
             raise IndexError(f"PMP entry {index} out of range [0, {self.num_entries})")
 
+        if (permissions & AccessType.WRITE) and not (permissions & AccessType.READ):
+            raise ValueError("Write permission requires read permission in baseline PMP")
         if base_address < 0:
             raise ValueError(f"Base address must be non-negative, got {base_address}")
 
@@ -293,7 +301,7 @@ class PMPUnit:
             raise ValueError(f"Base address 0x{base_address:X} not aligned to size {size}")
 
         entry = self._entries[index]
-        if entry.locked:
+        if entry.locked or self._locked_tor_successor(index):
             return False
 
         # Compute NAPOT encoding
@@ -301,6 +309,8 @@ class PMPUnit:
         # For NAPOT: pmpaddr = (base >> 2) with trailing 1s encoding the size
         napot_addr = (base_address >> 2) | ((size >> 3) - 1) if size > 8 else (base_address >> 2)
 
+        if napot_addr > 0x00FFFFFFFFFFFFFF:
+            raise ValueError("Region exceeds the 56-bit PMP address-register range")
         entry.pmpaddr = napot_addr
 
         # Set config
@@ -338,12 +348,18 @@ class PMPUnit:
         if not 0 <= index < self.num_entries:
             raise IndexError(f"PMP entry {index} out of range [0, {self.num_entries})")
 
+        if (permissions & AccessType.WRITE) and not (permissions & AccessType.READ):
+            raise ValueError("Write permission requires read permission in baseline PMP")
         if top_address < 0:
             raise ValueError(f"Top address must be non-negative, got {top_address}")
 
         entry = self._entries[index]
-        if entry.locked:
+        if entry.locked or self._locked_tor_successor(index):
             return False
+        if top_address % 4:
+            raise ValueError("TOR top address must be 4-byte aligned")
+        if top_address >> 2 > 0x00FFFFFFFFFFFFFF:
+            raise ValueError("TOR top exceeds the 56-bit PMP address-register range")
 
         entry.pmpaddr = top_address >> 2
 
@@ -358,70 +374,53 @@ class PMPUnit:
         return True
 
     def check_access(self, address: int, access_type: AccessType,
-                     privilege: PrivilegeMode = PrivilegeMode.M) -> Tuple[bool, str]:
+                     privilege: PrivilegeMode = PrivilegeMode.M,
+                     size: int = 1) -> Tuple[bool, str]:
+        """Check every byte of one physical memory operation.
+
+        The lowest-numbered rule intersecting *any* accessed byte wins. That
+        rule must contain the entire operation, even for M-mode overrides.
+        This models baseline PMP, not the Smepmp extension or virtual memory.
         """
-        Check if a memory access is allowed.
+        if not isinstance(address, int) or address < 0:
+            raise ValueError("Address must be a non-negative integer")
+        if not isinstance(size, int) or size <= 0:
+            raise ValueError("Access size must be a positive integer")
+        if not isinstance(access_type, AccessType) or not access_type or (int(access_type) & ~int(AccessType.RWX)):
+            raise ValueError("Access type must include valid R, W or X permissions")
+        if privilege not in (PrivilegeMode.U, PrivilegeMode.S, PrivilegeMode.M):
+            raise ValueError("Privilege must be U, S or M")
 
-        Per RISC-V spec:
-        1. Check entries in priority order (0 = highest)
-        2. If a matching entry is found:
-           - Check permissions
-           - If L=0 and privilege=M: always allowed (M-mode overrides)
-           - If L=1 or privilege≠M: check R/W/X bits
-        3. If no entry matches:
-           - M-mode: allowed (default)
-           - S/U-mode: denied (default)
-
-        Args:
-            address: Physical address to check (must be non-negative)
-            access_type: Type of access (READ, WRITE, EXECUTE)
-            privilege: Privilege mode (U, S, M)
-
-        Returns (allowed: bool, reason: str).
-
-        Raises:
-            ValueError: If address is negative.
-        """
-        if address < 0:
-            raise ValueError(f"Address must be non-negative, got {address}")
-
-        prev_top = 0
-
-        for entry in self._entries:
+        end = address + size
+        for i, entry in enumerate(self._entries):
             if entry.match_mode == PMPMatchMode.OFF:
-                if entry.match_mode == PMPMatchMode.TOR:
-                    prev_top = entry.pmpaddr << 2
+                continue
+            preceding_top = self._entries[i - 1].pmpaddr << 2 if i else 0
+            lo, hi = entry.get_address_range(preceding_top)
+            if lo >= hi or address >= hi or end <= lo:
                 continue
 
-            if entry.matches_address(address, prev_top):
-                # Found matching entry
-                if privilege == PrivilegeMode.M and not entry.locked:
-                    # M-mode with unlocked entry: access allowed
-                    return True, f"M-mode override on PMP[{entry.index}] ({entry.match_mode.name})"
+            if address < lo or end > hi:
+                return False, f"PMP[{i}] partially matches memory operation"
+            if privilege == PrivilegeMode.M and not entry.locked:
+                return True, f"M-mode override on PMP[{i}] ({entry.match_mode.name})"
+            if access_type & ~entry.permissions:
+                return False, f"PMP[{i}] denies {access_type.name} (has {entry.permissions.name})"
+            return True, f"PMP[{i}] allows {access_type.name}"
 
-                # Check permissions
-                if access_type & ~entry.permissions:
-                    missing = access_type & ~entry.permissions
-                    return False, (f"PMP[{entry.index}] denies {access_type.name} "
-                                   f"(has {entry.permissions.name})")
-
-                return True, f"PMP[{entry.index}] allows {access_type.name}"
-
-            if entry.match_mode == PMPMatchMode.TOR:
-                prev_top = entry.pmpaddr << 2
-
-        # No matching entry found
         if privilege == PrivilegeMode.M:
             return True, "No PMP match, M-mode default allow"
         return False, f"No PMP match, {privilege.name}-mode default deny"
 
     def get_memory_map(self) -> List[Dict[str, Any]]:
         """Get the current PMP memory map."""
-        return [e.to_dict() for e in self._entries if e.match_mode != PMPMatchMode.OFF]
+        return [e.to_dict(self._entries[i - 1].pmpaddr << 2 if i else 0)
+                for i, e in enumerate(self._entries) if e.match_mode != PMPMatchMode.OFF]
 
     def get_full_state(self) -> List[Dict[str, Any]]:
         """Get full state of all PMP entries."""
-        return [e.to_dict() for e in self._entries]
+        return [e.to_dict(self._entries[i - 1].pmpaddr << 2 if i else 0)
+                for i, e in enumerate(self._entries)]
 
     def reset(self):
         """Reset all PMP entries to default state."""
